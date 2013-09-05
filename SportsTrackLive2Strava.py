@@ -7,7 +7,7 @@ import urllib
 import re
 import zipfile
 
-def LoginStrava(url) :
+def LoginAtStrava(url) :
 	cookie_jar = cookielib.CookieJar()
 	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie_jar), MultipartPostHandler.MultipartPostHandler)
 
@@ -17,24 +17,20 @@ def LoginStrava(url) :
 
 	# Get authenticity_token
 	try:
-
-#"authenticity_token" type="hidden" value="
-
-# input name="authenticity_token"
 		token = re.search('"authenticity_token" type="hidden" value="(.+?)"', text).group(1)
 	except AttributeError:
-		# AAA, ZZZ not found in the original string
-		token = '' # apply your error handling
+		print 'Cannot find token'
+		return
 	
-	print token
+	print 'found token:' + token
 
 	# Login
 	loginData = urllib.urlencode({
 		'utf8' : '&#x2713;',
 		'authenticity_token' : token,
 		'plan' : '',
-		'email' : 'username', 
-		'password' : 'password'})
+		'email' : 'user', 
+		'password' : 'pass'})
 	try:
 		response = opener.open("https://www.strava.com/session", loginData);
 	except urllib2.HTTPError, e:
@@ -48,8 +44,6 @@ def LoginStrava(url) :
 			print 'unknown error: '
 	else:
 		print 'Successfully logged in'
-
-#	print response.read()
 
 	# Get upload file page
 	try:
@@ -65,9 +59,6 @@ def LoginStrava(url) :
 			print 'unknown error: '
 	else:
 		print 'Successfully got upload page'
-
-	print token
-	print response.read()
 	
 	uploadData = urllib.urlencode({
 		'_method' : 'post',
@@ -91,10 +82,11 @@ def LoginStrava(url) :
 			print 'unknown error: '
 	else:
 		print 'Successfully uploaded file'
+
 	print response.read()
 	
 
-def Login(url) :
+def LoginAtSportstracker(url) :
 	cookie_jar = cookielib.CookieJar()
 	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie_jar))
 	
@@ -103,13 +95,13 @@ def Login(url) :
 
 	# Login
 	loginData = urllib.urlencode({
-		'userCredentialsForm.userCredentials.email' : 'username', 
-		'userCredentialsForm.userCredentials.password' : 'password'})
+		'userCredentialsForm.userCredentials.email' : 'user', 
+		'userCredentialsForm.userCredentials.password' : 'pass'})
 	try:
 		response = opener.open(url, loginData);
 	except urllib2.HTTPError, e:
 		if e.code == 401:
-			print 'not authorized'
+			print 'not authorized'			
 		elif e.code == 404:
 			print 'not found'
 		elif e.code == 503:
@@ -119,52 +111,26 @@ def Login(url) :
 	else:
 		print 'Successfully logged in'
 
-
-		
-	
 	text = response.read()
-	userId = -1;
 	try:
-		found = re.search('track\/gpx\?userid=(.+?)">', text).group(1)
+		userId = re.search('track\/gpx\?userid=(.+?)">', text).group(1)
 	except AttributeError:
-		# AAA, ZZZ not found in the original string
-		found = '' # apply your error handling
-	
-	
-	print found
-	userId = found
-	text = 'http://www.sportstracklive.com/track/gpx?userid=19981">'
+		print 'could not find user id'
+		return False
 
-	try:
-		found = re.search('track\/gpx\?userid=(.+?)">', text).group(1)
-	except AttributeError:
-		# AAA, ZZZ not found in the original string
-		found = '' # apply your error handling
+	print userId
 
-	print found
+	DownloadZipFile(opener, "http://www.sportstracklive.com/track/gpx?userid=" + userId)
 	
-	zipUrl = "http://www.sportstracklive.com/track/gpx?userid=" + userId	
-	file = opener.open(zipUrl)
-	print "downloading zip file with gpx data"
+	return True
+	
+def DownloadZipFile(urlOpener, url) :
+	file = urlOpener.open(url)
+	print "downloading zip file with gpx data..."
 	
 	# Open our local file for writing
 	with open(os.path.basename("Sportstracklive.zip"), "wb") as local_file:
 		local_file.write(file.read())
-	
-
-#todo
-
-#try:
-# urllib2.urlopen(url)
-# except urllib2.HTTPError, e:
-#    print e.code
-#except urllib2.URLError, e:
-#    print e.args
-	
-	print "-------"	
-	
-def DownloadZipFile() :
-	print "downloaded zipfile"
 	
 def ExtractZipFile(filename, targetdir) :
 	try:
@@ -181,20 +147,39 @@ def ProcessGpxFile() :
 	print "processed gpxfile"
 	
 def main() :
-	config = ConfigParser.ConfigParser()
-	config.readfp(open('settings.ini'))
+	print '---------------------------------'
+	print 'Starting Sportstracklive 2 Strava'
+	print '---------------------------------\r\n'
+	print '1 - Reading program settings'
+	# read settings
+	try:
+		config = ConfigParser.ConfigParser()
+		config.readfp(open('settings.ini'))
+	except:
+		print 'Could not read settings file, exiting'
+		return -1
 	
+	print '2 - Login at sportstrackerlive and download file'
 	# login to sportstracker and get zip file.
-	Login(config.get('SportsTrackLive', 'BaseUrl') + config.get('SportsTrackLive', 'LoginUri'))
+	LoginAtSportstracker(config.get('SportsTrackLive', 'BaseUrl') + config.get('SportsTrackLive', 'LoginUri'))
+		
+	print '3 - Extract zip file'
+	ExtractZipFile('Sportstracklive.zip', 'gpx')
 	
+	print '4 - Login at sportstrackerlive and upload files'
 	# login to strava and upload file.
-	#LoginStrava(config.get('Strava', 'BaseUrl') + config.get('Strava', 'LoginUri'))
+	#LoginAtStrava(config.get('Strava', 'BaseUrl') + config.get('Strava', 'LoginUri'))
 	
 
-	DownloadZipFile()
-	ExtractZipFile('Sportstracklive.zip', 'gpx')
-	ReadGpxFile()
-	ProcessGpxFile()
+	
+	
+	#ReadGpxFile()
+	#ProcessGpxFile()
+	print '---------------------------------'
+	print 'End Sportstracklive 2 Strava'
+	print 'Now, you\'re an athlete!'
+	print 'Enjoy cycling running, and cheers, N.'
+	print '---------------------------------\r\n'	
 	
 if __name__ == "__main__":
     main()
