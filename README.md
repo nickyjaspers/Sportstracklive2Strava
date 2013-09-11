@@ -13,7 +13,7 @@ Tested with python 2.7
 Just call "python SportsTrackLive2Stava.py"
 You need to enter the credentials for both sites. Don't worry, no voodoo is happening with your credentials.
 Make sure you put in the correct credentials, because it will say it succeeded, but it will not.
-A nice error handling is not completely there yet, but the happy case works.
+A nice error handling is not completely there yet, but the happy case works. Don't like it? Stop whining and help me.
 
 - Future plans?
 Maybe, it's quite error prone, because both sites don't provide an api, so some site scraping / reverse engineering is done.
